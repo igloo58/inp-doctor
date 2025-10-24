@@ -19,7 +19,7 @@ final class INPD_Fixes {
 	public function hooks(): void {
 		add_action( 'admin_menu', [ $this, 'menu' ] );
 		add_action( 'admin_init', [ $this, 'register' ] );
-                add_action( 'wp_head', [ $this, 'emit_inline_js' ], 2 ); // early head priority keeps viewport guard effective
+                add_action( 'wp_head', [ $this, 'emit_inline_js' ], 20 ); // run after default hooks so viewport check sees existing tags
 		add_filter( 'script_loader_tag', [ $this, 'maybe_defer_tag' ], 10, 3 );
 	}
 
