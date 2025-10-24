@@ -1,0 +1,22 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.0','8.1','8.2','8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+      - run: composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+      - run: composer install --no-progress --prefer-dist --no-interaction
+      - run: ./vendor/bin/phpcs -i
+      - run: composer run lint:php
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
