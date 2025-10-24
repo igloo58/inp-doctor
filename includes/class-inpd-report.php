@@ -11,16 +11,14 @@ final class INPD_Report {
 	/**
 	 * Top Offenders by target selector.
 	 *
-	 * Computes p75 using a GROUP_CONCAT percentile approach (works on MySQL/MariaDB).
-	 * Falls back to averages if needed. We also cap list length via group_concat_max_len.
-	 *
-	 * @param int $days       Lookback window in days (default 7).
-	 * @param int $min_events Minimum number of events to include a selector (default 5).
-	 * @param int $limit      Max rows to return (default 50).
-	 * @param int $page       1-based page number (default 1).
-	 * @return array[]        Rows: selector, p75, avg_inp, worst_inp, events, example_url.
+	 * @param int    $days       Lookback window in days.
+	 * @param int    $min_events Minimum events per selector.
+	 * @param int    $limit      Max rows to return.
+	 * @param int    $page       1-based page number.
+	 * @param string $url_like   Optional URL "contains" filter.
+	 * @return array[]
 	 */
-	public static function top_offenders( int $days = 7, int $min_events = 5, int $limit = 50, int $page = 1 ): array {
+	public static function top_offenders( int $days = 7, int $min_events = 5, int $limit = 50, int $page = 1, string $url_like = '' ): array {
 		global $wpdb;
 
 		$table   = INPD_Plugin::table();
@@ -29,11 +27,18 @@ final class INPD_Report {
 		$page    = max( 1, $page );
 		$offset  = ( $page - 1 ) * $limit;
 
-		// Avoid truncation on active sites (safe no-op if host disallows).
-		@$wpdb->query( 'SET SESSION group_concat_max_len = 1048576' );
+		// Avoid truncation on busy sites.
+		@$wpdb->query( 'SET SESSION group_concat_max_len = 1048576' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
-		// Build query (percentile via ordered GROUP_CONCAT + SUBSTRING_INDEX).
-		// Note: target_selector can be empty; exclude empty for usefulness.
+		$where   = 't.ts >= %s AND t.target_selector <> \'\'';
+		$params  = [ $cutoff ];
+
+		if ( '' !== $url_like ) {
+			$like     = '%' . $wpdb->esc_like( $url_like ) . '%';
+			$where   .= ' AND t.page_url LIKE %s';
+			$params[] = $like;
+		}
+
 		$sql = "
 			SELECT
 				t.target_selector     AS selector,
@@ -48,45 +53,81 @@ final class INPD_Report {
 				COUNT(*)              AS events,
 				MIN(t.page_url)       AS example_url
 			FROM {$table} t
-			WHERE t.ts >= %s
-			  AND t.target_selector <> ''
+			WHERE {$where}
 			GROUP BY t.target_selector
 			HAVING events >= %d
 			ORDER BY p75 DESC
 			LIMIT %d OFFSET %d
 		";
 
-		// Prepare only the cutoff/min; limit/offset are ints we capped above.
-		$query = $wpdb->prepare( $sql, $cutoff, $min_events, $limit, $offset );
-		$rows  = (array) $wpdb->get_results( $query, ARRAY_A );
-
-		return $rows;
+		$query = $wpdb->prepare( $sql, array_merge( $params, [ $min_events, $limit, $offset ] ) );
+		return (array) $wpdb->get_results( $query, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 
 	/**
-	 * Count total selectors meeting the min_events threshold for pagination.
+	 * Count total selectors for pagination (with optional URL filter).
 	 *
-	 * @param int $days       Lookback window in days.
-	 * @param int $min_events Minimum events per selector.
+	 * @param int    $days       Lookback window in days.
+	 * @param int    $min_events Minimum events per selector.
+	 * @param string $url_like   Optional URL "contains" filter.
 	 * @return int
 	 */
-	public static function top_offenders_count( int $days = 7, int $min_events = 5 ): int {
+	public static function top_offenders_count( int $days = 7, int $min_events = 5, string $url_like = '' ): int {
 		global $wpdb;
 
 		$table  = INPD_Plugin::table();
 		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
 
+		$where   = 't.ts >= %s AND t.target_selector <> \'\'';
+		$params  = [ $cutoff ];
+
+		if ( '' !== $url_like ) {
+			$like     = '%' . $wpdb->esc_like( $url_like ) . '%';
+			$where   .= ' AND t.page_url LIKE %s';
+			$params[] = $like;
+		}
+
 		$sql = "
 			SELECT COUNT(*) FROM (
 				SELECT t.target_selector, COUNT(*) AS n
 				FROM {$table} t
-				WHERE t.ts >= %s
-				  AND t.target_selector <> ''
+				WHERE {$where}
 				GROUP BY t.target_selector
 				HAVING n >= %d
 			) x
 		";
 
-		return (int) $wpdb->get_var( $wpdb->prepare( $sql, $cutoff, $min_events ) );
+		return (int) $wpdb->get_var( $wpdb->prepare( $sql, array_merge( $params, [ $min_events ] ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
+	 * Recent events for a selector (for a details view).
+	 *
+	 * @param string $selector CSS selector.
+	 * @param int    $days     Lookback window in days.
+	 * @param int    $limit    Max events to return.
+	 * @param string $url_like Optional URL "contains" filter.
+	 * @return array[]
+	 */
+	public static function selector_events( string $selector, int $days = 7, int $limit = 20, string $url_like = '' ): array {
+		global $wpdb;
+
+		$table  = INPD_Plugin::table();
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
+		$limit  = max( 1, min( 200, $limit ) );
+
+		$where   = 'ts >= %s AND target_selector = %s';
+		$params  = [ $cutoff, $selector ];
+
+		if ( '' !== $url_like ) {
+			$like     = '%' . $wpdb->esc_like( $url_like ) . '%';
+			$where   .= ' AND page_url LIKE %s';
+			$params[] = $like;
+		}
+
+		$sql   = "SELECT ts, page_url, inp_ms, long_task_ms, device_type FROM {$table} WHERE {$where} ORDER BY ts DESC LIMIT %d";
+		$query = $wpdb->prepare( $sql, array_merge( $params, [ $limit ] ) );
+
+		return (array) $wpdb->get_results( $query, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 }
