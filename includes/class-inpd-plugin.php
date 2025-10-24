@@ -26,11 +26,14 @@ final class INPD_Plugin {
 		require_once __DIR__ . '/class-inpd-rest.php';
 		require_once __DIR__ . '/class-inpd-rum.php';
 		require_once __DIR__ . '/class-inpd-cron.php';
+		require_once __DIR__ . '/class-inpd-speculation.php';
 
 		( new INPD_Admin() )->hooks();
 		( new INPD_REST() )->hooks();
 		( new INPD_RUM() )->hooks();
 		( new INPD_Cron() )->hooks();
+		$spec = new INPD_Speculation();
+		$spec->hooks();
 	}
 
 	/** Install DB + schedule daily purge + seed token */
