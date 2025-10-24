@@ -95,15 +95,34 @@ final class INPD_Speculation {
 	 * @param mixed $raw Raw input.
 	 * @return array
 	 */
-	public static function sanitize_excludes( $raw ): array {
-		$items = is_array( $raw ) ? $raw : preg_split( "\r\n|\r|\n", (string) $raw );
-		$out   = [];
-		foreach ( (array) $items as $p ) {
-			$p = trim( (string) $p );
-			if ( '' === $p ) {
-				continue;
-			}
-			if ( strlen( $p ) > 200 ) {
+        public static function sanitize_excludes( $raw ): array {
+                $items = [];
+
+                if ( is_array( $raw ) ) {
+                        array_walk_recursive(
+                                $raw,
+                                static function ( $value ) use ( &$items ) {
+                                        $parts = preg_split( '/\r\n|\r|\n/', (string) $value );
+                                        if ( false === $parts ) {
+                                                $parts = [ (string) $value ];
+                                        }
+                                        $items   = array_merge( $items, $parts );
+                                }
+                        );
+                } else {
+                        $parts = preg_split( '/\r\n|\r|\n/', (string) $raw );
+                        if ( false !== $parts ) {
+                                $items = $parts;
+                        }
+                }
+
+                $out = [];
+                foreach ( (array) $items as $p ) {
+                        $p = trim( (string) $p );
+                        if ( '' === $p ) {
+                                continue;
+                        }
+                        if ( strlen( $p ) > 200 ) {
 				$p = substr( $p, 0, 200 );
 			}
 			$out[] = $p;
@@ -193,10 +212,34 @@ final class INPD_Speculation {
 			}
 		}
 
-		$same_origin = [
-			// Same-origin anchors only. This also covers absolute same-origin.
-			'selector_matches' => 'a[href^="/"]',
-		];
+                $same_origin_selectors = [ 'a[href^="/"]' ];
+
+                $home_variants = array_unique(
+                        array_filter(
+                                [
+                                        untrailingslashit( home_url() ),
+                                        untrailingslashit( home_url( '', 'https' ) ),
+                                        untrailingslashit( home_url( '', 'http' ) ),
+                                ]
+                        )
+                );
+
+                foreach ( $home_variants as $home_base ) {
+                        $encoded = esc_attr( $home_base );
+                        $same_origin_selectors[] = 'a[href="' . $encoded . '"]';
+                        $same_origin_selectors[] = 'a[href^="' . $encoded . '/"]';
+                        $same_origin_selectors[] = 'a[href^="' . $encoded . '?"]';
+                        $same_origin_selectors[] = 'a[href^="' . $encoded . '#"]';
+                }
+
+                $home_path = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+                if ( $home_path && '/' !== $home_path ) {
+                        $same_origin_selectors[] = 'a[href^="' . esc_attr( $home_path ) . '"]';
+                }
+
+                $same_origin = [
+                        'selector_matches' => implode( ',', array_values( array_unique( $same_origin_selectors ) ) ),
+                ];
 
 		$not_selector = implode( ',', $not_parts );
 
