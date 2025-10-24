@@ -19,7 +19,7 @@ final class INPD_Fixes {
 	public function hooks(): void {
 		add_action( 'admin_menu', [ $this, 'menu' ] );
 		add_action( 'admin_init', [ $this, 'register' ] );
-		add_action( 'wp_head', [ $this, 'emit_inline_js' ], 20 ); // after most theme head output
+                add_action( 'wp_head', [ $this, 'emit_inline_js' ], 2 ); // early head priority keeps viewport guard effective
 		add_filter( 'script_loader_tag', [ $this, 'maybe_defer_tag' ], 10, 3 );
 	}
 
@@ -220,6 +220,9 @@ final class INPD_Fixes {
     if (!supported) return;
   } catch(e){ return; }
 
+  if (window.__inpdPassivePatched) return;
+  window.__inpdPassivePatched = true;
+
   var orig = EventTarget.prototype.addEventListener;
   var PASSIVE = { passive: true };
   var SAFE = { scroll:1, wheel:1 };
@@ -239,6 +242,7 @@ JS;
 		if ( $want_contentv ) {
 			$chunks[] = <<<JS
 (function(){
+  if (!('CSS' in window) || !CSS.supports('content-visibility','auto')) return;
   try {
     var s=document.createElement("style");
     s.textContent=".inpd-cv{content-visibility:auto;contain-intrinsic-size:1px 1000px}";
