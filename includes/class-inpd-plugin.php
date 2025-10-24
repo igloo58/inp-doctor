@@ -21,19 +21,22 @@ final class INPD_Plugin {
 
 	/** Wire components */
 	public static function boot(): void {
-                require_once __DIR__ . '/class-inpd-admin.php';
-                require_once __DIR__ . '/class-inpd-report.php';
+		require_once __DIR__ . '/class-inpd-admin.php';
+		require_once __DIR__ . '/class-inpd-report.php';
 		require_once __DIR__ . '/class-inpd-rest.php';
 		require_once __DIR__ . '/class-inpd-rum.php';
 		require_once __DIR__ . '/class-inpd-cron.php';
 		require_once __DIR__ . '/class-inpd-speculation.php';
+		require_once __DIR__ . '/class-inpd-fixes.php';
 
 		( new INPD_Admin() )->hooks();
 		( new INPD_REST() )->hooks();
 		( new INPD_RUM() )->hooks();
 		( new INPD_Cron() )->hooks();
-		$spec = new INPD_Speculation();
+		$spec   = new INPD_Speculation();
 		$spec->hooks();
+		$fixes = new INPD_Fixes();
+		$fixes->hooks();
 	}
 
 	/** Install DB + schedule daily purge + seed token */
