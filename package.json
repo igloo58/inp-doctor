@@ -1,7 +1,0 @@
-{
-  "name": "inp-doctor",
-  "private": true,
-  "scripts": {
-    "build": "echo "(build RUM bundle here)""
-  }
-}
