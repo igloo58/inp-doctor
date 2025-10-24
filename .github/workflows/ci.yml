@@ -14,8 +14,26 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-      - run: composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-      - run: composer install --no-progress --prefer-dist --no-interaction
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache/files
+            vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            composer-
+
+      - name: Composer install (with retry)
+        run: |
+          set -e
+          for i in 1 2 3; do
+            composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+            composer install --no-progress --prefer-dist --no-interaction && exit 0
+            echo "composer install failed (attempt $i), retrying in 10s..."
+            sleep 10
+          done
+          exit 1
       - run: ./vendor/bin/phpcs -i
       - run: composer run lint:php
       - run: npm install --no-audit --no-fund
