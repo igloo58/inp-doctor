@@ -20,7 +20,8 @@ final class INPD_Plugin {
 
 	/** Wire components */
 	public static function boot(): void {
-		require_once __DIR__ . '/class-inpd-admin.php';
+                require_once __DIR__ . '/class-inpd-admin.php';
+                require_once __DIR__ . '/class-inpd-report.php';
 		require_once __DIR__ . '/class-inpd-rest.php';
 		require_once __DIR__ . '/class-inpd-rum.php';
 		require_once __DIR__ . '/class-inpd-cron.php';
