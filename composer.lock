@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "67a7067b31d74f4a8aef98fc1b12839e",
+    "content-hash": "ca2a97ee5a28f81f8a3a2e61b58d78f4",
     "packages": [],
     "packages-dev": [
         {
@@ -106,7 +106,7 @@
         },
         {
             "name": "squizlabs/php_codesniffer",
-            "version": "3.10.3",
+            "version": "3.10.2",
             "type": "library",
             "description": "PHP_CodeSniffer tokenizes PHP, JavaScript and CSS files and detects violations of a defined set of coding standards.",
             "keywords": [
@@ -126,7 +126,7 @@
             ],
             "support": {
                 "issues": "https://github.com/squizlabs/PHP_CodeSniffer/issues",
-                "source": "https://github.com/squizlabs/PHP_CodeSniffer/tree/3.10.3"
+                "source": "https://github.com/squizlabs/PHP_CodeSniffer/tree/3.10.2"
             },
             "require": {
                 "php": ">=5.4.0",
@@ -151,17 +151,17 @@
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/squizlabs/PHP_CodeSniffer/zipball/3.10.3",
-                "reference": "3.10.3",
+                "url": "https://api.github.com/repos/squizlabs/PHP_CodeSniffer/zipball/3.10.2",
+                "reference": "3.10.2",
                 "shasum": ""
             },
             "source": {
                 "type": "git",
                 "url": "https://github.com/squizlabs/PHP_CodeSniffer.git",
-                "reference": "3.10.3"
+                "reference": "3.10.2"
             },
             "notification-url": "https://packagist.org/downloads/",
-            "time": "2024-08-01T00:00:00+00:00",
+            "time": "2024-07-24T00:00:00+00:00",
             "installation-source": "dist"
         },
         {

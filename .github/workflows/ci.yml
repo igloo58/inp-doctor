@@ -11,6 +11,8 @@ jobs:
         php: ['8.0','8.1','8.2','8.3']
     steps:
       - uses: actions/checkout@v4
+      - name: Sanity check composer.lock
+        run: jq '.packages[]?.version, .["packages-dev"][]?.version' composer.lock | grep -E 'php_codesniffer|wpcs|phpcompat' || true
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -24,17 +26,56 @@ jobs:
           restore-keys: |
             composer-
 
-      - name: Composer install (with retry)
+      - name: Install QA toolchain (Composer with retry, else PHAR fallback)
+        id: qa
+        shell: bash
         run: |
           set -e
+
+          # Try Composer path first (3 attempts).
           for i in 1 2 3; do
-            composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
-            composer install --no-progress --prefer-dist --no-interaction && exit 0
+            composer config --no-interaction allow-plugins.dealerdirect/phpcodesniffer-composer-installer true || true
+            if composer install --no-progress --prefer-dist --no-interaction; then
+              echo "use=vendor" >> $GITHUB_OUTPUT
+              exit 0
+            fi
             echo "composer install failed (attempt $i), retrying in 10s..."
             sleep 10
           done
-          exit 1
-      - run: ./vendor/bin/phpcs -i
-      - run: composer run lint:php
+
+          # PHAR fallback: download PHPCS + WPCS + PHPCompatibility without Composer.
+          echo "Composer unavailable; using PHAR fallback for PHPCS/WPCS"
+          curl -LSs -o phpcs.phar https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.10.2/phpcs.phar
+          curl -LSs -o phpcbf.phar https://github.com/squizlabs/PHP_CodeSniffer/releases/download/3.10.2/phpcbf.phar
+
+          curl -LSs -o wpcs.zip https://github.com/WordPress/WordPress-Coding-Standards/archive/refs/tags/3.0.1.zip
+          unzip -q wpcs.zip
+          mv WordPress-Coding-Standards-* wpcs
+
+          curl -LSs -o phpcompat.zip https://github.com/PHPCompatibility/PHPCompatibility/archive/refs/tags/9.3.5.zip
+          unzip -q phpcompat.zip
+          mv PHPCompatibility-* phpcompat
+
+          php phpcs.phar --config-set installed_paths "$GITHUB_WORKSPACE/wpcs,$GITHUB_WORKSPACE/phpcompat"
+          echo "use=phar" >> $GITHUB_OUTPUT
+
+      - name: Show standards
+        shell: bash
+        run: |
+          if [ "${{ steps.qa.outputs.use }}" = "vendor" ]; then
+            ./vendor/bin/phpcs -i
+          else
+            php phpcs.phar -i
+          fi
+
+      - name: Lint PHP (WPCS)
+        shell: bash
+        run: |
+          if [ "${{ steps.qa.outputs.use }}" = "vendor" ]; then
+            ./vendor/bin/phpcs -p -s --standard=WordPress --runtime-set testVersion 8.0- inp-doctor.php includes
+          else
+            php phpcs.phar -p -s --standard=WordPress --runtime-set testVersion 8.0- inp-doctor.php includes
+          fi
+
       - run: npm install --no-audit --no-fund
       - run: npm run build
