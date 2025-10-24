@@ -1,6 +1,6 @@
 <?php
 /**
- * Cron shell.
+ * Cron tasks (retention, etc).
  *
  * @package INPDoctor
  */
@@ -12,7 +12,16 @@ final class INPD_Cron {
     add_action('inpd_purge_old_events', [$this, 'purge']);
   }
 
+  /**
+   * Delete raw events older than 30 days.
+   */
   public function purge(): void {
-    // Purge implementation will be added in feature PR.
+    global $wpdb;
+    $table = INPD_Plugin::table();
+    // Use GM time to align with token rotation.
+    $cutoff = gmdate('Y-m-d H:i:s', time() - 30 * DAY_IN_SECONDS);
+    $wpdb->query(
+      $wpdb->prepare("DELETE FROM {$table} WHERE ts < %s", $cutoff)
+    );
   }
 }
