@@ -6,7 +6,7 @@
     "phpcompatibility/php-compatibility": "^9.3"
   },
   "scripts": {
-    "lint:php": "./vendor/bin/phpcs -p -s --standard=WordPress --runtime-set testVersion 8.0- inp-doctor.php includes",
-    "fix:php": "./vendor/bin/phpcbf -p --standard=WordPress inp-doctor.php includes"
+    "lint:php": "./vendor/bin/phpcs -p -s --standard=WordPress --runtime-set testVersion 8.0- inp-doctor.php",
+    "fix:php": "./vendor/bin/phpcbf -p --standard=WordPress inp-doctor.php"
   }
 }
