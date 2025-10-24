@@ -1,0 +1,220 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "67a7067b31d74f4a8aef98fc1b12839e",
+    "packages": [],
+    "packages-dev": [
+        {
+            "name": "dealerdirect/phpcodesniffer-composer-installer",
+            "version": "1.0.0",
+            "type": "composer-plugin",
+            "description": "PHP_CodeSniffer Standards Composer Installer Plugin",
+            "keywords": [
+                "codesniffer",
+                "phpcs",
+                "wordpress"
+            ],
+            "homepage": "https://github.com/Dealerdirect/phpcodesniffer-composer-installer",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Franck Nijhof",
+                    "role": "Developer",
+                    "homepage": "https://github.com/frenck"
+                }
+            ],
+            "support": {
+                "issues": "https://github.com/Dealerdirect/phpcodesniffer-composer-installer/issues",
+                "source": "https://github.com/Dealerdirect/phpcodesniffer-composer-installer/tree/1.0.0"
+            },
+            "require": {
+                "php": "^5.3.2 || ^7.0 || ^8.0",
+                "composer-plugin-api": "^1.0 || ^2.0",
+                "squizlabs/php_codesniffer": "^2.3 || ^3.0"
+            },
+            "autoload": {
+                "psr-4": {
+                    "DealerDirect\\Composer\\Plugin\\Installers\\PHPCodeSniffer\\": "src/"
+                }
+            },
+            "extra": {
+                "class": "DealerDirect\\Composer\\Plugin\\Installers\\PHPCodeSniffer\\Plugin"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Dealerdirect/phpcodesniffer-composer-installer/zipball/1.0.0",
+                "reference": "1.0.0",
+                "shasum": ""
+            },
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Dealerdirect/phpcodesniffer-composer-installer.git",
+                "reference": "1.0.0"
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "time": "2020-05-14T08:00:00+00:00",
+            "installation-source": "dist"
+        },
+        {
+            "name": "phpcompatibility/php-compatibility",
+            "version": "9.3.5",
+            "type": "phpcodesniffer-standard",
+            "description": "A set of sniffs for PHP_CodeSniffer that checks for PHP cross-version compatibility.",
+            "keywords": [
+                "phpcs",
+                "compatibility",
+                "sniffs"
+            ],
+            "homepage": "https://github.com/PHPCompatibility/PHPCompatibility",
+            "license": [
+                "LGPL-3.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "PHPCompatibility Contributors",
+                    "homepage": "https://github.com/PHPCompatibility/PHPCompatibility/graphs/contributors"
+                }
+            ],
+            "support": {
+                "issues": "https://github.com/PHPCompatibility/PHPCompatibility/issues",
+                "source": "https://github.com/PHPCompatibility/PHPCompatibility/tree/9.3.5"
+            },
+            "require": {
+                "php": ">=5.3",
+                "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+                "squizlabs/php_codesniffer": "^3.5.4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PHPCompatibility/PHPCompatibility/zipball/9.3.5",
+                "reference": "9.3.5",
+                "shasum": ""
+            },
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PHPCompatibility/PHPCompatibility.git",
+                "reference": "9.3.5"
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "time": "2021-10-06T00:00:00+00:00",
+            "installation-source": "dist"
+        },
+        {
+            "name": "squizlabs/php_codesniffer",
+            "version": "3.10.3",
+            "type": "library",
+            "description": "PHP_CodeSniffer tokenizes PHP, JavaScript and CSS files and detects violations of a defined set of coding standards.",
+            "keywords": [
+                "phpcs",
+                "standards",
+                "lint"
+            ],
+            "homepage": "https://github.com/squizlabs/PHP_CodeSniffer",
+            "license": [
+                "BSD-3-Clause"
+            ],
+            "authors": [
+                {
+                    "name": "Greg Sherwood",
+                    "homepage": "https://github.com/gsherwood"
+                }
+            ],
+            "support": {
+                "issues": "https://github.com/squizlabs/PHP_CodeSniffer/issues",
+                "source": "https://github.com/squizlabs/PHP_CodeSniffer/tree/3.10.3"
+            },
+            "require": {
+                "php": ">=5.4.0",
+                "ext-tokenizer": "*"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^4.0 || ^5.0 || ^6.0 || ^7.0"
+            },
+            "bin": [
+                "bin/phpcs",
+                "bin/phpcbf"
+            ],
+            "autoload": {
+                "psr-4": {
+                    "PHP_CodeSniffer\\": "src/"
+                }
+            },
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "3.x-dev"
+                }
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/squizlabs/PHP_CodeSniffer/zipball/3.10.3",
+                "reference": "3.10.3",
+                "shasum": ""
+            },
+            "source": {
+                "type": "git",
+                "url": "https://github.com/squizlabs/PHP_CodeSniffer.git",
+                "reference": "3.10.3"
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "time": "2024-08-01T00:00:00+00:00",
+            "installation-source": "dist"
+        },
+        {
+            "name": "wp-coding-standards/wpcs",
+            "version": "3.1.0",
+            "type": "phpcodesniffer-standard",
+            "description": "PHP_CodeSniffer rules (sniffs) to enforce WordPress coding standards.",
+            "keywords": [
+                "wordpress",
+                "phpcs",
+                "standards"
+            ],
+            "homepage": "https://github.com/WordPress/WordPress-Coding-Standards",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "WordPress Coding Standards Contributors",
+                    "homepage": "https://github.com/WordPress/WordPress-Coding-Standards/graphs/contributors"
+                }
+            ],
+            "support": {
+                "issues": "https://github.com/WordPress/WordPress-Coding-Standards/issues",
+                "source": "https://github.com/WordPress/WordPress-Coding-Standards/tree/3.1.0"
+            },
+            "require": {
+                "php": ">=5.4",
+                "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+                "squizlabs/php_codesniffer": "^3.7.1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/WordPress-Coding-Standards/zipball/3.1.0",
+                "reference": "3.1.0",
+                "shasum": ""
+            },
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/WordPress-Coding-Standards.git",
+                "reference": "3.1.0"
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "time": "2024-09-30T00:00:00+00:00",
+            "installation-source": "dist"
+        }
+    ],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
+}

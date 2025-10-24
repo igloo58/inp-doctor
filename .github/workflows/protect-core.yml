@@ -15,6 +15,7 @@ jobs:
             includes/class-inpd-rest.php \
             includes/class-inpd-rum.php \
             includes/class-inpd-cron.php \
+            assets/rum/inpd-rum.umd.js \
             composer.json \
             .github/workflows/ci.yml ; do
             if [ ! -f "$f" ]; then echo "Missing $f"; exit 1; fi
