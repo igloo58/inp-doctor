@@ -75,16 +75,19 @@ final class INPD_Fixes {
 		settings_fields( 'inpd_fixes' );
 		echo '<table class="form-table" role="presentation"><tbody>';
 
-		echo '<tr><th>' . esc_html__( 'Passive listeners (safe scope)', 'inpd' ) . '</th><td>';
-		echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_PASSIVE ) . '" value="1" ' . checked( $passive, true, false ) . ' /> ';
+                echo '<tr><th>' . esc_html__( 'Passive listeners (safe scope)', 'inpd' ) . '</th><td>';
+                echo '<input type="hidden" name="' . esc_attr( self::OPT_PASSIVE ) . '" value="0" />';
+                echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_PASSIVE ) . '" value="1" ' . checked( $passive, true, false ) . ' /> ';
 		echo esc_html__( 'Set passive listeners for scroll/wheel on window/document only (non-breaking).', 'inpd' ) . '</label></td></tr>';
 
-		echo '<tr><th>' . esc_html__( 'Off-screen content-visibility', 'inpd' ) . '</th><td>';
-		echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_CONTENTV ) . '" value="1" ' . checked( $contentv, true, false ) . ' /> ';
+                echo '<tr><th>' . esc_html__( 'Off-screen content-visibility', 'inpd' ) . '</th><td>';
+                echo '<input type="hidden" name="' . esc_attr( self::OPT_CONTENTV ) . '" value="0" />';
+                echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_CONTENTV ) . '" value="1" ' . checked( $contentv, true, false ) . ' /> ';
 		echo esc_html__( 'Apply content-visibility:auto to obvious large sections below the fold.', 'inpd' ) . '</label></td></tr>';
 
-		echo '<tr><th>' . esc_html__( 'Viewport meta guard', 'inpd' ) . '</th><td>';
-		echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_VIEWPORT ) . '" value="1" ' . checked( $viewport, true, false ) . ' /> ';
+                echo '<tr><th>' . esc_html__( 'Viewport meta guard', 'inpd' ) . '</th><td>';
+                echo '<input type="hidden" name="' . esc_attr( self::OPT_VIEWPORT ) . '" value="0" />';
+                echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_VIEWPORT ) . '" value="1" ' . checked( $viewport, true, false ) . ' /> ';
 		echo esc_html__( 'Inject a viewport meta only if the page is missing one.', 'inpd' ) . '</label></td></tr>';
 
 		echo '</tbody></table>';
