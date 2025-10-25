@@ -28,6 +28,7 @@ final class INPD_Plugin {
 		require_once __DIR__ . '/class-inpd-cron.php';
 		require_once __DIR__ . '/class-inpd-speculation.php';
 		require_once __DIR__ . '/class-inpd-fixes.php';
+		require_once __DIR__ . '/class-inpd-diagnostics.php';
 
 		( new INPD_Admin() )->hooks();
 		( new INPD_REST() )->hooks();
@@ -37,6 +38,8 @@ final class INPD_Plugin {
 		$spec->hooks();
 		$fixes = new INPD_Fixes();
 		$fixes->hooks();
+		$diag = new INPD_Diagnostics();
+		$diag->hooks();
 	}
 
 	/** Install DB + schedule daily purge + seed token */
