@@ -23,7 +23,7 @@ final class INPD_Report {
 
 		$table   = INPD_Plugin::table();
 		$cutoff  = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
-		$limit   = max( 1, min( 200, $limit ) );
+		$limit   = min( 2000, max( 1, $limit ) );
 		$page    = max( 1, $page );
 		$offset  = ( $page - 1 ) * $limit;
 
@@ -107,14 +107,16 @@ final class INPD_Report {
 	 * @param int    $days     Lookback window in days.
 	 * @param int    $limit    Max events to return.
 	 * @param string $url_like Optional URL "contains" filter.
+	 * @param int    $offset   Result offset for pagination.
 	 * @return array[]
 	 */
-	public static function selector_events( string $selector, int $days = 7, int $limit = 20, string $url_like = '' ): array {
+	public static function selector_events( string $selector, int $days = 7, int $limit = 20, string $url_like = '', int $offset = 0 ): array {
 		global $wpdb;
 
 		$table  = INPD_Plugin::table();
 		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $days * DAY_IN_SECONDS ) );
-		$limit  = max( 1, min( 200, $limit ) );
+		$limit  = min( 2000, max( 1, $limit ) );
+		$offset = max( 0, $offset );
 
 		$where   = 'ts >= %s AND target_selector = %s';
 		$params  = [ $cutoff, $selector ];
@@ -125,8 +127,8 @@ final class INPD_Report {
 			$params[] = $like;
 		}
 
-		$sql   = "SELECT ts, page_url, inp_ms, long_task_ms, device_type FROM {$table} WHERE {$where} ORDER BY ts DESC LIMIT %d";
-		$query = $wpdb->prepare( $sql, array_merge( $params, [ $limit ] ) );
+		$sql   = "SELECT ts, page_url, target_selector, inp_ms, long_task_ms, device_type FROM {$table} WHERE {$where} ORDER BY ts DESC LIMIT %d OFFSET %d";
+		$query = $wpdb->prepare( $sql, array_merge( $params, [ $limit, $offset ] ) );
 
 		return (array) $wpdb->get_results( $query, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}

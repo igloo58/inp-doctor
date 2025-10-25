@@ -10,6 +10,7 @@ declare( strict_types=1 );
 final class INPD_Admin {
 	public function hooks(): void {
 		add_action( 'admin_menu', [ $this, 'menu' ] );
+		add_action( 'admin_post_inpd_export_csv', [ $this, 'export_offenders_csv' ] );
 	}
 
 	public function menu(): void {
@@ -31,6 +32,11 @@ final class INPD_Admin {
 			$s = substr( $s, 0, 117 ) . '...';
 		}
 		return esc_html( $s );
+	}
+
+	/** Protect CSV cells from being interpreted as formulas. */
+	private function csv_cell( string $s ): string {
+		return preg_match( '/^[=\+\-@]/', ltrim( $s ) ) ? "\t" . $s : $s;
 	}
 
 	public function render_offenders(): void {
@@ -112,6 +118,19 @@ final class INPD_Admin {
 		echo 'URL contains: ';
 		echo '<input type="text" name="url" value="' . esc_attr( $url_like ) . '" style="width:200px" /> &nbsp; ';
 		submit_button( 'Apply', 'secondary', '', false );
+		$selector = '' !== $sel_param ? $sel_param : '';
+		$export_url = add_query_arg(
+			[
+				'action'   => 'inpd_export_csv',
+				'nonce'    => wp_create_nonce( 'inpd_export_csv' ),
+				'days'     => $days,
+				'min'      => $min_events,
+				'url'      => $url_like,
+				'selector' => $selector,
+			],
+			admin_url( 'admin-post.php' )
+		);
+		echo ' <a class="button button-secondary" href="' . esc_url( $export_url ) . '">' . esc_html__( 'Export CSV', 'inpd' ) . '</a>';
 		echo '</form>';
 
 		// Table.
@@ -176,5 +195,133 @@ final class INPD_Admin {
 		}
 
 		echo '</div>';
+	}
+
+	/**
+	 * Export Top Offenders as CSV, respecting current filters.
+	 * Route: wp-admin/admin-post.php?action=inpd_export_csv&nonce=...&days=...&min=...&url=... (and optional page/limit)
+	 */
+	public function export_offenders_csv(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to export this data.', 'inpd' ), 403 );
+		}
+
+		$nonce = isset( $_GET['nonce'] ) ? wp_unslash( (string) $_GET['nonce'] ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'inpd_export_csv' ) ) {
+			wp_die( esc_html__( 'Invalid export request.', 'inpd' ), 400 );
+		}
+
+		// Sanitize filters (mirror UI defaults).
+		$days       = isset( $_GET['days'] ) ? max( 1, (int) $_GET['days'] ) : 7;
+		$min_events = isset( $_GET['min'] ) ? max( 1, (int) $_GET['min'] ) : 5;
+		$url_like   = isset( $_GET['url'] ) ? sanitize_text_field( (string) wp_unslash( $_GET['url'] ) ) : '';
+		$selector   = isset( $_GET['selector'] ) ? substr( sanitize_text_field( (string) wp_unslash( $_GET['selector'] ) ), 0, 255 ) : '';
+
+		// Chunked streaming to avoid memory issues on busy sites.
+		$chunk = 500;
+		$chunk = min( 2000, max( 100, (int) $chunk ) );
+		$page  = 1;
+		$page  = max( 1, $page );
+
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=inpd-top-offenders-' . gmdate( 'Ymd-His' ) . '.csv' );
+		set_time_limit( 0 );
+		ignore_user_abort( true );
+
+		$out = fopen( 'php://output', 'w' );
+		if ( false === $out ) {
+			wp_die( esc_html__( 'Unable to open output stream.', 'inpd' ), 500 );
+		}
+
+		echo "\xEF\xBB\xBF"; // helps Excel recognize UTF-8.
+
+		$header = [
+			'selector',
+			'p75_ms',
+			'avg_ms',
+			'worst_ms',
+			'events',
+			'sample_url',
+			'lookback_days',
+			'min_events',
+			'url_filter',
+		];
+
+		if ( '' !== $selector ) {
+			$header = [
+				'selector',
+				'inp_ms',
+				'long_task_ms',
+				'device_type',
+				'page_url',
+				'timestamp',
+			];
+		}
+
+		$header = apply_filters( 'inpd/csv/offenders_header', $header );
+		fputcsv( $out, $header );
+
+		if ( '' !== $selector ) {
+			do {
+				$offset = ( $page - 1 ) * $chunk;
+				$events = INPD_Report::selector_events( $selector, $days, $chunk, $url_like, $offset );
+
+				if ( empty( $events ) ) {
+					break;
+				}
+
+				foreach ( $events as $event ) {
+					$row = [
+						$this->csv_cell( (string) ( $event['target_selector'] ?? $selector ) ),
+						(int) ( $event['inp_ms'] ?? 0 ),
+						(int) ( $event['long_task_ms'] ?? 0 ),
+						$this->csv_cell( (string) ( $event['device_type'] ?? '' ) ),
+						$this->csv_cell( (string) ( $event['page_url'] ?? '' ) ),
+						$this->csv_cell( (string) ( $event['ts'] ?? '' ) ),
+					];
+					$row = apply_filters( 'inpd/csv/offenders_row', $row, $event );
+					fputcsv( $out, $row );
+				}
+
+				$page++;
+			} while ( count( $events ) === $chunk );
+
+			fclose( $out );
+			exit;
+		}
+
+		do {
+			$rows = INPD_Report::top_offenders( $days, $min_events, $chunk, $page, $url_like );
+
+			if ( empty( $rows ) ) {
+				break;
+			}
+
+			foreach ( $rows as $row_data ) {
+				$row = [
+					$this->csv_cell( (string) ( $row_data['selector'] ?? '' ) ),
+					(int) ( $row_data['p75'] ?? 0 ),
+					(int) ( $row_data['avg_inp'] ?? 0 ),
+					(int) ( $row_data['worst_inp'] ?? 0 ),
+					(int) ( $row_data['events'] ?? 0 ),
+					$this->csv_cell( (string) ( $row_data['example_url'] ?? '' ) ),
+					$days,
+					$min_events,
+					$this->csv_cell( $url_like ),
+				];
+				$row = apply_filters( 'inpd/csv/offenders_row', $row, $row_data );
+				fputcsv( $out, $row );
+			}
+
+			$page++;
+		} while ( count( $rows ) === $chunk );
+
+		fclose( $out );
+		exit;
 	}
 }
