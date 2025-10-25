@@ -26,8 +26,8 @@ final class INPD_Fixes {
 	public function menu(): void {
 		add_submenu_page(
 			'inpd',
-			__( 'Safe Fixes', 'inpd' ),
-			__( 'Safe Fixes', 'inpd' ),
+			__( 'Safe Fixes', 'inp-doctor' ),
+			__( 'Safe Fixes', 'inp-doctor' ),
 			'manage_options',
 			'inpd-fixes',
 			[ $this, 'render' ]
@@ -73,7 +73,7 @@ final class INPD_Fixes {
 
 	public function render(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'inpd' ) );
+			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'inp-doctor' ) );
 		}
 
 		$passive  = (bool) get_option( self::OPT_PASSIVE, true );
@@ -81,33 +81,33 @@ final class INPD_Fixes {
 		$viewport = (bool) get_option( self::OPT_VIEWPORT, true );
 		$defer    = (bool) get_option( self::OPT_DEFER, true );
 
-		echo '<div class="wrap"><h1>' . esc_html__( 'Safe Fixes', 'inpd' ) . '</h1>';
+		echo '<div class="wrap"><h1>' . esc_html__( 'Safe Fixes', 'inp-doctor' ) . '</h1>';
 		echo '<form action="' . esc_url( admin_url( 'options.php' ) ) . '" method="post">';
 		settings_fields( 'inpd_fixes' );
 		echo '<table class="form-table" role="presentation"><tbody>';
 
-                echo '<tr><th>' . esc_html__( 'Passive listeners (safe scope)', 'inpd' ) . '</th><td>';
+                echo '<tr><th>' . esc_html__( 'Passive listeners (safe scope)', 'inp-doctor' ) . '</th><td>';
                 echo '<input type="hidden" name="' . esc_attr( self::OPT_PASSIVE ) . '" value="0" />';
                 echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_PASSIVE ) . '" value="1" ' . checked( $passive, true, false ) . ' /> ';
-		echo esc_html__( 'Set passive listeners for scroll/wheel on window/document only (non-breaking).', 'inpd' ) . '</label></td></tr>';
+		echo esc_html__( 'Set passive listeners for scroll/wheel on window/document only (non-breaking).', 'inp-doctor' ) . '</label></td></tr>';
 
-                echo '<tr><th>' . esc_html__( 'Off-screen content-visibility', 'inpd' ) . '</th><td>';
+                echo '<tr><th>' . esc_html__( 'Off-screen content-visibility', 'inp-doctor' ) . '</th><td>';
                 echo '<input type="hidden" name="' . esc_attr( self::OPT_CONTENTV ) . '" value="0" />';
                 echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_CONTENTV ) . '" value="1" ' . checked( $contentv, true, false ) . ' /> ';
-		echo esc_html__( 'Apply content-visibility:auto to obvious large sections below the fold.', 'inpd' ) . '</label></td></tr>';
+		echo esc_html__( 'Apply content-visibility:auto to obvious large sections below the fold.', 'inp-doctor' ) . '</label></td></tr>';
 
-                echo '<tr><th>' . esc_html__( 'Viewport meta guard', 'inpd' ) . '</th><td>';
+                echo '<tr><th>' . esc_html__( 'Viewport meta guard', 'inp-doctor' ) . '</th><td>';
                 echo '<input type="hidden" name="' . esc_attr( self::OPT_VIEWPORT ) . '" value="0" />';
                 echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_VIEWPORT ) . '" value="1" ' . checked( $viewport, true, false ) . ' /> ';
-		echo esc_html__( 'Inject a viewport meta only if the page is missing one.', 'inpd' ) . '</label></td></tr>';
+		echo esc_html__( 'Inject a viewport meta only if the page is missing one.', 'inp-doctor' ) . '</label></td></tr>';
 
-		echo '<tr><th>' . esc_html__( 'Script defer (presets)', 'inpd' ) . '</th><td>';
+		echo '<tr><th>' . esc_html__( 'Script defer (presets)', 'inp-doctor' ) . '</th><td>';
 		echo '<input type="hidden" name="' . esc_attr( self::OPT_DEFER ) . '" value="0" />';
 		echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_DEFER ) . '" value="1" ' . checked( $defer, true, false ) . ' /> ';
-		echo esc_html__( 'Add defer to eligible enqueued scripts; respects dependencies and a safe denylist.', 'inpd' ) . '</label></td></tr>';
+		echo esc_html__( 'Add defer to eligible enqueued scripts; respects dependencies and a safe denylist.', 'inp-doctor' ) . '</label></td></tr>';
 
 		echo '</tbody></table>';
-		submit_button( __( 'Save Changes', 'inpd' ) );
+		submit_button( __( 'Save Changes', 'inp-doctor' ) );
 		echo '</form></div>';
 	}
 

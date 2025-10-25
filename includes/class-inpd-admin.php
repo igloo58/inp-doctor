@@ -41,7 +41,7 @@ final class INPD_Admin {
 
 	public function render_offenders(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'inpd' ) );
+			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'inp-doctor' ) );
 		}
 
 		$days       = isset( $_GET['days'] ) ? max( 1, min( 28, absint( $_GET['days'] ) ) ) : 7;   // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -130,7 +130,7 @@ final class INPD_Admin {
 			],
 			admin_url( 'admin-post.php' )
 		);
-		echo ' <a class="button button-secondary" href="' . esc_url( $export_url ) . '">' . esc_html__( 'Export CSV', 'inpd' ) . '</a>';
+		echo ' <a class="button button-secondary" href="' . esc_url( $export_url ) . '">' . esc_html__( 'Export CSV', 'inp-doctor' ) . '</a>';
 		echo '</form>';
 
 		// Table.
@@ -203,12 +203,12 @@ final class INPD_Admin {
 	 */
 	public function export_offenders_csv(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to export this data.', 'inpd' ), 403 );
+			wp_die( esc_html__( 'Sorry, you are not allowed to export this data.', 'inp-doctor' ), 403 );
 		}
 
 		$nonce = isset( $_GET['nonce'] ) ? wp_unslash( (string) $_GET['nonce'] ) : '';
 		if ( ! wp_verify_nonce( $nonce, 'inpd_export_csv' ) ) {
-			wp_die( esc_html__( 'Invalid export request.', 'inpd' ), 400 );
+			wp_die( esc_html__( 'Invalid export request.', 'inp-doctor' ), 400 );
 		}
 
 		// Sanitize filters (mirror UI defaults).
@@ -235,7 +235,7 @@ final class INPD_Admin {
 
 		$out = fopen( 'php://output', 'w' );
 		if ( false === $out ) {
-			wp_die( esc_html__( 'Unable to open output stream.', 'inpd' ), 500 );
+			wp_die( esc_html__( 'Unable to open output stream.', 'inp-doctor' ), 500 );
 		}
 
 		echo "\xEF\xBB\xBF"; // helps Excel recognize UTF-8.

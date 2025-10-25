@@ -33,8 +33,8 @@ final class INPD_Speculation {
 	public function menu(): void {
 		add_submenu_page(
 			'inpd',
-			__( 'Speculative Loading', 'inpd' ),
-			__( 'Speculative Loading', 'inpd' ),
+			__( 'Speculative Loading', 'inp-doctor' ),
+			__( 'Speculative Loading', 'inp-doctor' ),
 			'manage_options',
 			'inpd-speculation',
 			[ $this, 'render' ]
@@ -136,17 +136,17 @@ final class INPD_Speculation {
 	 */
 	public function render(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'inpd' ) );
+			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'inp-doctor' ) );
 		}
 
 		$enabled  = (bool) get_option( self::OPT_ENABLE, self::supported() );
 		$excludes = (array) get_option( self::OPT_EXCLUDES, [] );
 
-		echo '<div class="wrap"><h1>' . esc_html__( 'Speculative Loading', 'inpd' ) . '</h1>';
+		echo '<div class="wrap"><h1>' . esc_html__( 'Speculative Loading', 'inp-doctor' ) . '</h1>';
 
 		if ( ! self::supported() ) {
 			echo '<div class="notice notice-warning"><p>';
-			echo esc_html__( 'Speculation Rules require WordPress 6.8 or newer. This site will no-op safely on older versions.', 'inpd' );
+			echo esc_html__( 'Speculation Rules require WordPress 6.8 or newer. This site will no-op safely on older versions.', 'inp-doctor' );
 			echo '</p></div>';
 		}
 
@@ -155,21 +155,21 @@ final class INPD_Speculation {
 
 		echo '<table class="form-table" role="presentation"><tbody>';
 
-		echo '<tr><th scope="row">' . esc_html__( 'Enable prefetch (same-origin)', 'inpd' ) . '</th><td>';
+		echo '<tr><th scope="row">' . esc_html__( 'Enable prefetch (same-origin)', 'inp-doctor' ) . '</th><td>';
 		echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_ENABLE ) . '" value="1" ' . checked( $enabled, true, false ) . ' />';
-		echo ' ' . esc_html__( 'Enable conservative link prefetch on hover/viewport (no prerender).', 'inpd' ) . '</label>';
+		echo ' ' . esc_html__( 'Enable conservative link prefetch on hover/viewport (no prerender).', 'inp-doctor' ) . '</label>';
 		echo '</td></tr>';
 
-		echo '<tr><th scope="row">' . esc_html__( 'Exclude patterns', 'inpd' ) . '</th><td>';
-		echo '<p>' . esc_html__( 'One per line. Simple contains or path prefix. Examples: /checkout, /cart, /my-account, ?, /wp-admin', 'inpd' ) . '</p>';
+		echo '<tr><th scope="row">' . esc_html__( 'Exclude patterns', 'inp-doctor' ) . '</th><td>';
+		echo '<p>' . esc_html__( 'One per line. Simple contains or path prefix. Examples: /checkout, /cart, /my-account, ?, /wp-admin', 'inp-doctor' ) . '</p>';
 		echo '<textarea name="' . esc_attr( self::OPT_EXCLUDES ) . '[]" rows="8" cols="60" style="width: 420px;">' . esc_textarea( implode( "\n", $excludes ) ) . '</textarea>';
 		echo '</td></tr>';
 
 		echo '</tbody></table>';
-		submit_button( __( 'Save Changes', 'inpd' ) );
+		submit_button( __( 'Save Changes', 'inp-doctor' ) );
 		echo '</form>';
 
-		echo '<p><em>' . esc_html__( 'Notes: Prefetch is limited to same-origin links. Prerender remains OFF by default. Excludes are applied as CSS selectors for safety.', 'inpd' ) . '</em></p>';
+		echo '<p><em>' . esc_html__( 'Notes: Prefetch is limited to same-origin links. Prerender remains OFF by default. Excludes are applied as CSS selectors for safety.', 'inp-doctor' ) . '</em></p>';
 
 		echo '</div>';
 	}
