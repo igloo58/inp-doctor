@@ -184,6 +184,13 @@ final class INPD_Fixes {
 			return $tag;
 		}
 
+		global $wp_scripts;
+		/* @var WP_Scripts $wp_scripts */
+		if ( isset( $wp_scripts->registered[ $handle ]->extra['before'] ) && ! empty( $wp_scripts->registered[ $handle ]->extra['before'] ) ) {
+			// Inline "before" code relies on synchronous execution order; skip defer.
+			return $tag;
+		}
+
 		// Insert defer before closing of opening tag.
 		$tag = preg_replace( '/^<script\b(?![^>]*\bdefer\b)/i', '<script defer', $tag, 1 );
 		return $tag ?: $tag;
