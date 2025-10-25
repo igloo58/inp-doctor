@@ -13,12 +13,18 @@
 
 declare( strict_types=1 );
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+defined( 'ABSPATH' ) || exit;
+
+if ( ! defined( 'INPD_LITE_VERSION' ) ) {
+	define( 'INPD_LITE_VERSION', '1.0.0' );
 }
 
 define( 'INPD_FILE', __FILE__ );
 define( 'INPD_VERSION', '1.0.0' );
+
+add_action( 'plugins_loaded', static function () {
+	load_plugin_textdomain( 'inp-doctor', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+} );
 
 require __DIR__ . '/includes/class-inpd-plugin.php';
 INPD_Plugin::init();
