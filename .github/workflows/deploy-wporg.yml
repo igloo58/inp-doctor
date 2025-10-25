@@ -1,0 +1,95 @@
+name: Deploy to WordPress.org
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - '1.*'
+      - '2.*'
+
+jobs:
+  deploy:
+    if: ${{ github.repository_owner == 'igloo58' && startsWith(github.ref, 'refs/tags/') }}
+    permissions:
+      contents: read
+    concurrency:
+      group: wporg-deploy-${{ github.ref_name }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check wp.org secrets
+        id: check-wporg-secrets
+        run: |
+          if [ -z "${{ secrets.WPORG_USERNAME }}" ] || [ -z "${{ secrets.WPORG_PASSWORD }}" ]; then
+            echo "::notice title=Deploy skipped::WPORG secrets missing"
+            echo "run_deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "run_deploy=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.check-wporg-secrets.outputs.run_deploy == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Optional: run PHPCS to block bad tags (we already have CI on PRs).
+      - name: PHPCS (informational)
+        if: steps.check-wporg-secrets.outputs.run_deploy == 'true'
+        run: |
+          echo "Skipping strict PHPCS here; enforced in PR CI."
+
+      - name: Build (npm)
+        if: steps.check-wporg-secrets.outputs.run_deploy == 'true'
+        run: |
+          if [ -f package.json ]; then
+            npm ci --no-audit --no-fund
+            npm run build
+          fi
+
+      - name: Setup Python (ensure Pillow can install)
+        if: steps.check-wporg-secrets.outputs.run_deploy == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate placeholder wp.org assets
+        if: steps.check-wporg-secrets.outputs.run_deploy == 'true'
+        run: |
+          python3 - <<'PY'
+          import os
+          try:
+              from PIL import Image
+          except ImportError:
+              import sys, subprocess
+              subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow"])
+              from PIL import Image
+
+          os.makedirs(".wordpress-org", exist_ok=True)
+
+          # Required banner/icon sizes for wp.org
+          sizes = [
+              ("banner-1544x500.png", 1544, 500),
+              ("banner-772x250.png",   772,  250),
+              ("icon-256x256.png",     256,  256),
+              ("icon-128x128.png",     128,  128),
+          ]
+          for name, w, h in sizes:
+              Image.new("RGBA", (w, h), (255, 255, 255, 0)).save(f".wordpress-org/{name}")
+
+          # Three transparent screenshots at a reasonable size
+          for i in range(1, 4):
+              Image.new("RGBA", (1200, 900), (255, 255, 255, 0)).save(f".wordpress-org/screenshot-{i}.png")
+          PY
+
+      - name: WordPress.org plugin deploy
+        if: steps.check-wporg-secrets.outputs.run_deploy == 'true'
+        uses: 10up/action-wordpress-plugin-deploy@v2
+        with:
+          generate-zip: true
+          asset-directory: .wordpress-org
+        env:
+          SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
+          SLUG: inp-doctor
