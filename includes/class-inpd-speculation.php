@@ -195,22 +195,23 @@ final class INPD_Speculation {
 		// a[href*="/checkout"], a[href^="/wp-admin"], etc.
 		$not_parts = [ 'a[rel~="nofollow"]', 'a[target="_blank"]' ];
 
-		foreach ( $excludes as $p ) {
-			$p = trim( (string) $p );
-			if ( '' === $p ) {
-				continue;
-			}
-			if ( '?' === $p ) {
-				$not_parts[] = 'a[href*="?"]';
-				continue;
-			}
-			// If looks like a path prefix, use ^=, else contains.
-			if ( '/' === $p[0] ) {
-				$not_parts[] = 'a[href^="' . esc_attr( $p ) . '"]';
-			} else {
-				$not_parts[] = 'a[href*="' . esc_attr( $p ) . '"]';
-			}
-		}
+                foreach ( $excludes as $p ) {
+                        $p = trim( (string) $p );
+                        if ( '' === $p ) {
+                                continue;
+                        }
+                        if ( '?' === $p ) {
+                                $not_parts[] = 'a[href*="?"]';
+                                continue;
+                        }
+                        $escaped = self::escape_selector_attribute( $p );
+                        // If looks like a path prefix, use ^=, else contains.
+                        if ( '/' === $p[0] ) {
+                                $not_parts[] = 'a[href^="' . $escaped . '"]';
+                        } else {
+                                $not_parts[] = 'a[href*="' . $escaped . '"]';
+                        }
+                }
 
                 $same_origin_selectors = [ 'a[href^="/"]' ];
 
@@ -225,7 +226,7 @@ final class INPD_Speculation {
                 );
 
                 foreach ( $home_variants as $home_base ) {
-                        $encoded = esc_attr( $home_base );
+                        $encoded = self::escape_selector_attribute( $home_base );
                         $same_origin_selectors[] = 'a[href="' . $encoded . '"]';
                         $same_origin_selectors[] = 'a[href^="' . $encoded . '/"]';
                         $same_origin_selectors[] = 'a[href^="' . $encoded . '?"]';
@@ -234,7 +235,7 @@ final class INPD_Speculation {
 
                 $home_path = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
                 if ( $home_path && '/' !== $home_path ) {
-                        $same_origin_selectors[] = 'a[href^="' . esc_attr( $home_path ) . '"]';
+                        $same_origin_selectors[] = 'a[href^="' . self::escape_selector_attribute( $home_path ) . '"]';
                 }
 
                 $same_origin = [
@@ -259,6 +260,17 @@ final class INPD_Speculation {
 			// No prerender by default.
 		];
 
-		echo "\n" . '<script type="speculationrules">' . wp_json_encode( $data, JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
-	}
+                echo "\n" . '<script type="speculationrules">' . wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG ) . '</script>' . "\n";
+        }
+
+        /**
+         * Escape a value for use inside a CSS attribute selector.
+         *
+         * @param string $value Raw attribute value.
+         * @return string
+         */
+        private static function escape_selector_attribute( string $value ): string {
+                // Escape backslashes and quotes per CSS syntax to keep selectors valid.
+                return addcslashes( $value, "\\\"'" );
+        }
 }
