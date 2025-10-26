@@ -27,4 +27,7 @@ add_action( 'plugins_loaded', static function () {
 } );
 
 require __DIR__ . '/includes/class-inpd-plugin.php';
+
+register_deactivation_hook( __FILE__, [ 'INPD_Plugin', 'deactivate' ] );
+
 INPD_Plugin::init();
