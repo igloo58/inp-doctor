@@ -150,8 +150,8 @@ final class INPD_Fixes {
 			return $tag;
 		}
 
-		// Already has async/defer/nomodule/type=module? leave it alone.
-               if ( preg_match( "/\s(async|defer|type=[\"']module[\"'])/i", $tag ) ) {
+                // Already has async/defer/nomodule/type=module? leave it alone.
+                if ( preg_match( '/\s(async|defer|type\s*=\s*["\']module["\'])/i', $tag ) ) {
 			return $tag;
 		}
 
