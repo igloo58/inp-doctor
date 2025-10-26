@@ -16,6 +16,15 @@ final class INPD_Fixes {
 	const OPT_VIEWPORT = 'inpd_fix_viewport';
 	const OPT_DEFER    = 'inpd_fix_defer_presets';
 
+	private function fixes_allowed_now(): bool {
+		// If preview is disabled globally, always on.
+		if ( ! class_exists( 'INPD_Preview' ) || ! INPD_Preview::enabled() ) {
+			return true;
+		}
+		// Preview enabled => only apply for active preview admin sessions.
+		return INPD_Preview::active();
+	}
+
 	public function hooks(): void {
 		add_action( 'admin_menu', [ $this, 'menu' ] );
 		add_action( 'admin_init', [ $this, 'register' ] );
@@ -49,22 +58,22 @@ final class INPD_Fixes {
 			update_option( self::OPT_DEFER, true, false );
 		}
 
-		register_setting( 'inpd_fixes', self::OPT_PASSIVE, [
+		register_setting( 'inpd', self::OPT_PASSIVE, [
 			'type'              => 'boolean',
 			'sanitize_callback' => static fn( $v ) => (bool) $v,
 			'default'           => true,
 		] );
-		register_setting( 'inpd_fixes', self::OPT_CONTENTV, [
+		register_setting( 'inpd', self::OPT_CONTENTV, [
 			'type'              => 'boolean',
 			'sanitize_callback' => static fn( $v ) => (bool) $v,
 			'default'           => true,
 		] );
-		register_setting( 'inpd_fixes', self::OPT_VIEWPORT, [
+		register_setting( 'inpd', self::OPT_VIEWPORT, [
 			'type'              => 'boolean',
 			'sanitize_callback' => static fn( $v ) => (bool) $v,
 			'default'           => true,
 		] );
-		register_setting( 'inpd_fixes', self::OPT_DEFER, [
+		register_setting( 'inpd', self::OPT_DEFER, [
 			'type'              => 'boolean',
 			'sanitize_callback' => static fn( $v ) => (bool) $v,
 			'default'           => true,
@@ -83,7 +92,7 @@ final class INPD_Fixes {
 
 		echo '<div class="wrap"><h1>' . esc_html__( 'Safe Fixes', 'inp-doctor' ) . '</h1>';
 		echo '<form action="' . esc_url( admin_url( 'options.php' ) ) . '" method="post">';
-		settings_fields( 'inpd_fixes' );
+		settings_fields( 'inpd' );
 		echo '<table class="form-table" role="presentation"><tbody>';
 
                 echo '<tr><th>' . esc_html__( 'Passive listeners (safe scope)', 'inp-doctor' ) . '</th><td>';
@@ -106,6 +115,13 @@ final class INPD_Fixes {
 		echo '<label><input type="checkbox" name="' . esc_attr( self::OPT_DEFER ) . '" value="1" ' . checked( $defer, true, false ) . ' /> ';
 		echo esc_html__( 'Add defer to eligible enqueued scripts; respects dependencies and a safe denylist.', 'inp-doctor' ) . '</label></td></tr>';
 
+		echo '<tr><th scope="row">' . esc_html__( 'Preview Mode', 'inp-doctor' ) . '</th><td>';
+		echo '<input type="hidden" name="inpd_preview_mode" value="0" />';
+		echo '<label><input type="checkbox" name="inpd_preview_mode" value="1" ' .
+			checked( get_option( 'inpd_preview_mode', true ), true, false ) . ' /> ' .
+			esc_html__( 'Only apply fixes for my admin session (use the Admin Bar switch to toggle).', 'inp-doctor' ) .
+		'</label></td></tr>';
+
 		echo '</tbody></table>';
 		submit_button( __( 'Save Changes', 'inp-doctor' ) );
 		echo '</form></div>';
@@ -123,6 +139,10 @@ final class INPD_Fixes {
 	 * - Skip scripts that already have strategy/async/defer attributes set by others.
 	 */
 	public function maybe_defer_tag( string $tag, string $handle, string $src ): string {
+		if ( ! $this->fixes_allowed_now() ) {
+			return $tag;
+		}
+
 		if ( is_admin() || ! (bool) get_option( self::OPT_DEFER, true ) ) {
 			return $tag;
 		}
@@ -202,6 +222,9 @@ final class INPD_Fixes {
 	 */
 	public function emit_inline_js(): void {
 		if ( is_admin() ) {
+			return;
+		}
+		if ( ! $this->fixes_allowed_now() ) {
 			return;
 		}
 
