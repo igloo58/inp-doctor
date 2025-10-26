@@ -150,5 +150,6 @@ final class INPD_Plugin {
 
 	public static function deactivate(): void {
 		wp_clear_scheduled_hook( 'inpd_rollup_daily' );
+		wp_clear_scheduled_hook( 'inpd_purge_old_events' );
 	}
 }
