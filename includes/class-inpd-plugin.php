@@ -27,6 +27,7 @@ final class INPD_Plugin {
 		require_once __DIR__ . '/class-inpd-rum.php';
 		require_once __DIR__ . '/class-inpd-cron.php';
 		require_once __DIR__ . '/class-inpd-speculation.php';
+		require_once __DIR__ . '/class-inpd-preview.php';
 		require_once __DIR__ . '/class-inpd-fixes.php';
 		require_once __DIR__ . '/class-inpd-diagnostics.php';
 		require_once __DIR__ . '/class-inpd-rollup.php';
@@ -39,6 +40,8 @@ final class INPD_Plugin {
 		( new INPD_Cron() )->hooks();
 		$spec   = new INPD_Speculation();
 		$spec->hooks();
+		$preview = new INPD_Preview();
+		$preview->hooks();
 		$fixes = new INPD_Fixes();
 		$fixes->hooks();
 		$diag = new INPD_Diagnostics();
