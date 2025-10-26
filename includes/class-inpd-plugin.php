@@ -10,7 +10,7 @@ declare( strict_types=1 );
 final class INPD_Plugin {
 	const OPT_TOKEN = 'inpd_pub_token';
 	const OPT_VERSION = 'inpd_db_version';
-	const DB_VERSION = '2';
+	const DB_VERSION = '3';
 
 	/** Entry point */
 	public static function init(): void {
@@ -29,8 +29,11 @@ final class INPD_Plugin {
 		require_once __DIR__ . '/class-inpd-speculation.php';
 		require_once __DIR__ . '/class-inpd-fixes.php';
 		require_once __DIR__ . '/class-inpd-diagnostics.php';
+		require_once __DIR__ . '/class-inpd-rollup.php';
 
-		( new INPD_Admin() )->hooks();
+		$report = new INPD_Report();
+
+		( new INPD_Admin( $report ) )->hooks();
 		( new INPD_REST() )->hooks();
 		( new INPD_RUM() )->hooks();
 		( new INPD_Cron() )->hooks();
@@ -40,11 +43,13 @@ final class INPD_Plugin {
 		$fixes->hooks();
 		$diag = new INPD_Diagnostics();
 		$diag->hooks();
+		$rollups = new INPD_Rollup();
+		$rollups->hooks();
 	}
 
 	/** Install DB + schedule daily purge + seed token */
 	public static function activate(): void {
-		self::install();
+		self::install_schema();
 
 		if ( ! get_option( self::OPT_TOKEN ) ) {
 			update_option( self::OPT_TOKEN, wp_generate_password( 24, false ), false );
@@ -53,39 +58,66 @@ final class INPD_Plugin {
 		if ( ! wp_next_scheduled( 'inpd_purge_old_events' ) ) {
 			wp_schedule_event( time() + 3600, 'daily', 'inpd_purge_old_events' );
 		}
+
+		// Nightly rollup at ~02:00 UTC.
+		if ( ! wp_next_scheduled( 'inpd_rollup_daily' ) ) {
+			wp_schedule_event( strtotime( 'tomorrow 02:00 UTC' ), 'daily', 'inpd_rollup_daily' );
+		}
 	}
 
 	/** Install or upgrade database schema */
-	private static function install(): void {
+	private static function install_schema(): void {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		$table   = self::table();
 		$charset = $wpdb->get_charset_collate();
+		$events  = $wpdb->prefix . 'inpd_events';
+		$rollups = $wpdb->prefix . 'inpd_rollups';
 
-		// Raw RUM events table (30d retention).
-		$sql = <<<SQL
-CREATE TABLE {$table} (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  ts DATETIME NOT NULL,
-  page_url TEXT NOT NULL,
-  interaction_type VARCHAR(32) NOT NULL,
-  target_selector VARCHAR(255) NOT NULL,
-  inp_ms SMALLINT UNSIGNED NOT NULL,
-  long_task_ms SMALLINT UNSIGNED NULL,
-  script_url VARCHAR(255) NULL,
-  ua_family_hash BINARY(16) NULL,
-  device_type ENUM('desktop','mobile','tablet','other') DEFAULT 'other',
-  sample_rate TINYINT UNSIGNED DEFAULT 100,
-  PRIMARY KEY (id),
-  KEY ts (ts),
-  KEY inp_ms (inp_ms),
-  KEY interaction_type (interaction_type),
-  KEY device_type (device_type)
-) {$charset};
-SQL;
+		$sql_events = "CREATE TABLE {$events} (
+		id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		ts DATETIME NOT NULL,
+		page_url TEXT NOT NULL,
+		interaction_type VARCHAR(32) NOT NULL,
+		target_selector VARCHAR(255) NOT NULL,
+		inp_ms SMALLINT UNSIGNED NOT NULL,
+		long_task_ms SMALLINT UNSIGNED NULL,
+		script_url VARCHAR(255) NULL,
+		ua_family_hash BINARY(16) NULL,
+		device_type VARCHAR(10) NOT NULL DEFAULT 'other',
+		sample_rate TINYINT UNSIGNED DEFAULT 100,
+		PRIMARY KEY (id),
+		KEY ts (ts),
+		KEY inp_ms (inp_ms),
+		KEY interaction_type (interaction_type),
+		KEY device_type (device_type)
+		) {$charset};";
 
-		dbDelta( $sql );
+		$sql_rollups = "CREATE TABLE {$rollups} (
+		d DATE NOT NULL,
+		page_path VARCHAR(255) NOT NULL,
+		target_selector VARCHAR(255) NOT NULL,
+		device_type VARCHAR(10) NOT NULL DEFAULT 'other',
+		p50 SMALLINT UNSIGNED NOT NULL,
+		p75 SMALLINT UNSIGNED NOT NULL,
+		p95 SMALLINT UNSIGNED NOT NULL,
+		cnt INT UNSIGNED NOT NULL,
+		worst SMALLINT UNSIGNED NOT NULL,
+		PRIMARY KEY (d, page_path, target_selector, device_type),
+		KEY d (d),
+		KEY page_path (page_path),
+		KEY target_selector (target_selector)
+		) {$charset};";
+
+		dbDelta( $sql_events );
+		dbDelta( $sql_rollups );
+
+		// Migrate old ENUM -> VARCHAR if it exists.
+		$col = $wpdb->get_row( "SHOW COLUMNS FROM {$events} LIKE 'device_type'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		if ( $col && isset( $col->Type ) && stripos( (string) $col->Type, 'enum' ) !== false ) {
+			$wpdb->query( "ALTER TABLE {$events} MODIFY device_type VARCHAR(10) NOT NULL DEFAULT 'other'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		}
+
 		update_option( self::OPT_VERSION, self::DB_VERSION, false );
 	}
 
@@ -93,8 +125,8 @@ SQL;
 	public static function maybe_upgrade(): void {
 		$version = (string) get_option( self::OPT_VERSION, '' );
 
-		if ( self::DB_VERSION !== $version ) {
-			self::install();
+		if ( version_compare( (string) self::DB_VERSION, $version, '>' ) ) {
+			self::install_schema();
 		}
 	}
 
@@ -111,5 +143,9 @@ SQL;
 		$day = gmdate( 'Y-m-d' );
 
 		return wp_hash( $tok . '|' . $day, 'nonce' );
+	}
+
+	public static function deactivate(): void {
+		wp_clear_scheduled_hook( 'inpd_rollup_daily' );
 	}
 }

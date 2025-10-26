@@ -8,20 +8,47 @@
 declare( strict_types=1 );
 
 final class INPD_Admin {
+	/**
+	 * Reporting helper.
+	 *
+	 * @var INPD_Report
+	 */
+	private INPD_Report $report;
+
+	public function __construct( INPD_Report $report ) {
+		$this->report = $report;
+	}
+
 	public function hooks(): void {
 		add_action( 'admin_menu', [ $this, 'menu' ] );
 		add_action( 'admin_post_inpd_export_csv', [ $this, 'export_offenders_csv' ] );
+		add_action( 'admin_init', [ $this, 'register_settings' ] );
+	}
+
+	public function register_settings(): void {
+		register_setting(
+		'inpd',
+		'inpd_prefer_rollups',
+		[
+		'type'              => 'boolean',
+		'sanitize_callback' => static function ( $v ) {
+			return (bool) $v;
+		},
+		'show_in_rest'      => false,
+		'default'           => true,
+		]
+		);
 	}
 
 	public function menu(): void {
 		add_menu_page(
-			'INP Doctor',
-			'INP Doctor',
-			'manage_options',
-			'inpd',
-			[ $this, 'render_offenders' ],
-			'dashicons-performance',
-			58
+		'INP Doctor',
+		'INP Doctor',
+		'manage_options',
+		'inpd',
+		[ $this, 'render_offenders' ],
+		'dashicons-performance',
+		58
 		);
 	}
 
@@ -44,19 +71,20 @@ final class INPD_Admin {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'inp-doctor' ) );
 		}
 
-		$days       = isset( $_GET['days'] ) ? max( 1, min( 28, absint( $_GET['days'] ) ) ) : 7;   // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$min_events = isset( $_GET['min'] ) ? max( 1, min( 100, absint( $_GET['min'] ) ) ) : 5;    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$limit      = isset( $_GET['limit'] ) ? max( 5, min( 100, absint( $_GET['limit'] ) ) ) : 50; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$page       = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;           // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$url_like   = isset( $_GET['url'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['url'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$sel_param  = isset( $_GET['sel'] ) ? (string) wp_unslash( $_GET['sel'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$days          = isset( $_GET['days'] ) ? max( 1, min( 28, absint( $_GET['days'] ) ) ) : 7;   // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$min_events    = isset( $_GET['min'] ) ? max( 1, min( 100, absint( $_GET['min'] ) ) ) : 5;    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$limit         = isset( $_GET['limit'] ) ? max( 5, min( 100, absint( $_GET['limit'] ) ) ) : 50; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page          = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$url_like      = isset( $_GET['url'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['url'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$sel_param     = isset( $_GET['sel'] ) ? (string) wp_unslash( $_GET['sel'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$prefer_rollup = isset( $_GET['rollups'] ) ? (bool) $_GET['rollups'] : (bool) get_option( 'inpd_prefer_rollups', true ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		echo '<div class="wrap">';
 		echo '<h1>INP Doctor</h1>';
 
 		// Selector details view.
 		if ( '' !== $sel_param ) {
-			$events = INPD_Report::selector_events( $sel_param, $days, 20, $url_like );
+			$events = $this->report->selector_events( $sel_param, $days, 20, $url_like );
 
 			echo '<h2>Recent events for <code>' . self::esc_short( $sel_param ) . '</code></h2>';
 			echo '<table class="widefat striped"><thead><tr>';
@@ -82,30 +110,55 @@ final class INPD_Admin {
 			echo '</tbody></table>';
 
 			$back_url = add_query_arg(
-				[
-					'page'  => 'inpd',
-					'days'  => $days,
-					'min'   => $min_events,
-					'limit' => $limit,
-					'url'   => $url_like,
-				],
-				admin_url( 'admin.php' )
+			[
+			'page'    => 'inpd',
+			'days'    => $days,
+			'min'     => $min_events,
+			'limit'   => $limit,
+			'url'     => $url_like,
+			'rollups' => $prefer_rollup ? 1 : 0,
+			],
+			admin_url( 'admin.php' )
 			);
 			echo '<p><a class="button" href="' . esc_url( $back_url ) . '">Back</a></p>';
 			echo '</div>';
 			return;
 		}
 
-		$total = INPD_Report::top_offenders_count( $days, $min_events, $url_like );
-		$rows  = INPD_Report::top_offenders( $days, $min_events, $limit, $page, $url_like );
-		$pages = max( 1, (int) ceil( $total / $limit ) );
+		$total   = $this->report->get_top_offenders_count(
+		[
+		'days'           => $days,
+		'url_like'       => $url_like,
+		'min_events'     => $min_events,
+		'prefer_rollups' => $prefer_rollup,
+		]
+		);
+		$offset  = ( $page - 1 ) * $limit;
+		$rows    = $this->report->get_top_offenders(
+		[
+		'days'           => $days,
+		'url_like'       => $url_like,
+		'min_events'     => $min_events,
+		'limit'          => $limit,
+		'offset'         => $offset,
+		'prefer_rollups' => $prefer_rollup,
+		]
+		);
+		$pages   = max( 1, (int) ceil( $total / $limit ) );
 
-		echo '<h2 class="title">Top Offenders (p75 INP)</h2>';
+		echo '<h2 class="title">Top Offenders (p75 INP)';
+		if ( $prefer_rollup && $this->report->rollups_available() ) {
+			echo ' <span class="dashicons dashicons-performance" title="' . esc_attr__( 'Using daily rollups', 'inp-doctor' ) . '"></span>';
+		}
+		echo '</h2>';
 
 		// Filters.
 		$base = admin_url( 'admin.php?page=inpd' );
 		echo '<form method="get" action="' . esc_url( $base ) . '" style="margin:12px 0">';
 		echo '<input type="hidden" name="page" value="inpd" />';
+		if ( $prefer_rollup ) {
+			echo '<input type="hidden" name="rollups" value="1" />';
+		}
 		echo 'Lookback: ';
 		echo '<select name="days">';
 		foreach ( [ 1, 3, 7, 14, 28 ] as $d ) {
@@ -118,17 +171,26 @@ final class INPD_Admin {
 		echo 'URL contains: ';
 		echo '<input type="text" name="url" value="' . esc_attr( $url_like ) . '" style="width:200px" /> &nbsp; ';
 		submit_button( 'Apply', 'secondary', '', false );
+		echo '<label style="margin-left:8px;"><input type="checkbox" name="prefer_rollups" value="1"' . checked( $prefer_rollup, true, false ) . ' onchange="location.href=this.checked?addQueryArg(location.href,\'rollups\',1):removeQueryArg(location.href,\'rollups\');"> ';
+		esc_html_e( 'Prefer rollups (faster)', 'inp-doctor' );
+		echo '</label>';
+		static $rollup_query_helpers_printed = false;
+		if ( ! $rollup_query_helpers_printed ) {
+			echo '<script>window.addQueryArg=window.addQueryArg||function(u,k,v){var url=new URL(u);url.searchParams.set(k,v);return url.toString();};window.removeQueryArg=window.removeQueryArg||function(u,k){var url=new URL(u);url.searchParams.delete(k);return url.toString();};</script>';
+			$rollup_query_helpers_printed = true;
+		}
 		$selector = '' !== $sel_param ? $sel_param : '';
 		$export_url = add_query_arg(
-			[
-				'action'   => 'inpd_export_csv',
-				'nonce'    => wp_create_nonce( 'inpd_export_csv' ),
-				'days'     => $days,
-				'min'      => $min_events,
-				'url'      => $url_like,
-				'selector' => $selector,
-			],
-			admin_url( 'admin-post.php' )
+		[
+		'action'   => 'inpd_export_csv',
+		'nonce'    => wp_create_nonce( 'inpd_export_csv' ),
+		'days'     => $days,
+		'min'      => $min_events,
+		'url'      => $url_like,
+		'selector' => $selector,
+		'rollups'  => $prefer_rollup ? 1 : 0,
+		],
+		admin_url( 'admin-post.php' )
 		);
 		echo ' <a class="button button-secondary" href="' . esc_url( $export_url ) . '">' . esc_html__( 'Export CSV', 'inp-doctor' ) . '</a>';
 		echo '</form>';
@@ -150,15 +212,16 @@ final class INPD_Admin {
 			foreach ( $rows as $r ) {
 				echo '<tr>';
 				$sel_link = add_query_arg(
-					[
-						'page'  => 'inpd',
-						'days'  => $days,
-						'min'   => $min_events,
-						'limit' => $limit,
-						'url'   => $url_like,
-						'sel'   => (string) $r['selector'],
-					],
-					admin_url( 'admin.php' )
+				[
+				'page'    => 'inpd',
+				'days'    => $days,
+				'min'     => $min_events,
+				'limit'   => $limit,
+				'url'     => $url_like,
+				'sel'     => (string) $r['selector'],
+				'rollups' => $prefer_rollup ? 1 : 0,
+				],
+				admin_url( 'admin.php' )
 				);
 				echo '<td><a href="' . esc_url( $sel_link ) . '"><code>' . self::esc_short( (string) $r['selector'] ) . '</code></a></td>';
 				echo '<td>' . esc_html( (string) (int) $r['p75'] ) . '</td>';
@@ -178,15 +241,16 @@ final class INPD_Admin {
 			echo '<div class="tablenav"><div class="tablenav-pages">';
 			for ( $p = 1; $p <= $pages; $p++ ) {
 				$url = add_query_arg(
-					[
-						'page'  => 'inpd',
-						'days'  => $days,
-						'min'   => $min_events,
-						'limit' => $limit,
-						'paged' => $p,
-						'url'   => $url_like,
-					],
-					admin_url( 'admin.php' )
+				[
+				'page'    => 'inpd',
+				'days'    => $days,
+				'min'     => $min_events,
+				'limit'   => $limit,
+				'paged'   => $p,
+				'url'     => $url_like,
+				'rollups' => $prefer_rollup ? 1 : 0,
+				],
+				admin_url( 'admin.php' )
 				);
 				$cls = ( $p === $page ) ? ' class="button button-primary button-small"' : ' class="button button-small"';
 				echo '<a' . $cls . ' href="' . esc_url( $url ) . '">' . esc_html( (string) $p ) . '</a> ';
@@ -212,10 +276,11 @@ final class INPD_Admin {
 		}
 
 		// Sanitize filters (mirror UI defaults).
-		$days       = isset( $_GET['days'] ) ? max( 1, (int) $_GET['days'] ) : 7;
-		$min_events = isset( $_GET['min'] ) ? max( 1, (int) $_GET['min'] ) : 5;
-		$url_like   = isset( $_GET['url'] ) ? sanitize_text_field( (string) wp_unslash( $_GET['url'] ) ) : '';
-		$selector   = isset( $_GET['selector'] ) ? substr( sanitize_text_field( (string) wp_unslash( $_GET['selector'] ) ), 0, 255 ) : '';
+		$days          = isset( $_GET['days'] ) ? max( 1, (int) $_GET['days'] ) : 7;
+		$min_events    = isset( $_GET['min'] ) ? max( 1, (int) $_GET['min'] ) : 5;
+		$url_like      = isset( $_GET['url'] ) ? sanitize_text_field( (string) wp_unslash( $_GET['url'] ) ) : '';
+		$selector      = isset( $_GET['selector'] ) ? substr( sanitize_text_field( (string) wp_unslash( $_GET['selector'] ) ), 0, 255 ) : '';
+		$prefer_rollup = isset( $_GET['rollups'] ) ? (bool) $_GET['rollups'] : (bool) get_option( 'inpd_prefer_rollups', true );
 
 		// Chunked streaming to avoid memory issues on busy sites.
 		$chunk = 500;
@@ -241,25 +306,25 @@ final class INPD_Admin {
 		echo "\xEF\xBB\xBF"; // helps Excel recognize UTF-8.
 
 		$header = [
-			'selector',
-			'p75_ms',
-			'avg_ms',
-			'worst_ms',
-			'events',
-			'sample_url',
-			'lookback_days',
-			'min_events',
-			'url_filter',
+		'selector',
+		'p75_ms',
+		'avg_ms',
+		'worst_ms',
+		'events',
+		'sample_url',
+		'lookback_days',
+		'min_events',
+		'url_filter',
 		];
 
 		if ( '' !== $selector ) {
 			$header = [
-				'selector',
-				'inp_ms',
-				'long_task_ms',
-				'device_type',
-				'page_url',
-				'timestamp',
+			'selector',
+			'inp_ms',
+			'long_task_ms',
+			'device_type',
+			'page_url',
+			'timestamp',
 			];
 		}
 
@@ -269,7 +334,7 @@ final class INPD_Admin {
 		if ( '' !== $selector ) {
 			do {
 				$offset = ( $page - 1 ) * $chunk;
-				$events = INPD_Report::selector_events( $selector, $days, $chunk, $url_like, $offset );
+				$events = $this->report->selector_events( $selector, $days, $chunk, $url_like, $offset );
 
 				if ( empty( $events ) ) {
 					break;
@@ -277,12 +342,12 @@ final class INPD_Admin {
 
 				foreach ( $events as $event ) {
 					$row = [
-						$this->csv_cell( (string) ( $event['target_selector'] ?? $selector ) ),
-						(int) ( $event['inp_ms'] ?? 0 ),
-						(int) ( $event['long_task_ms'] ?? 0 ),
-						$this->csv_cell( (string) ( $event['device_type'] ?? '' ) ),
-						$this->csv_cell( (string) ( $event['page_url'] ?? '' ) ),
-						$this->csv_cell( (string) ( $event['ts'] ?? '' ) ),
+					$this->csv_cell( (string) ( $event['target_selector'] ?? $selector ) ),
+					(int) ( $event['inp_ms'] ?? 0 ),
+					(int) ( $event['long_task_ms'] ?? 0 ),
+					$this->csv_cell( (string) ( $event['device_type'] ?? '' ) ),
+					$this->csv_cell( (string) ( $event['page_url'] ?? '' ) ),
+					$this->csv_cell( (string) ( $event['ts'] ?? '' ) ),
 					];
 					$row = apply_filters( 'inpd/csv/offenders_row', $row, $event );
 					fputcsv( $out, $row );
@@ -296,7 +361,17 @@ final class INPD_Admin {
 		}
 
 		do {
-			$rows = INPD_Report::top_offenders( $days, $min_events, $chunk, $page, $url_like );
+			$offset = ( $page - 1 ) * $chunk;
+			$rows   = $this->report->get_top_offenders(
+			[
+			'days'           => $days,
+			'url_like'       => $url_like,
+			'min_events'     => $min_events,
+			'limit'          => $chunk,
+			'offset'         => $offset,
+			'prefer_rollups' => $prefer_rollup,
+			]
+			);
 
 			if ( empty( $rows ) ) {
 				break;
@@ -304,15 +379,15 @@ final class INPD_Admin {
 
 			foreach ( $rows as $row_data ) {
 				$row = [
-					$this->csv_cell( (string) ( $row_data['selector'] ?? '' ) ),
-					(int) ( $row_data['p75'] ?? 0 ),
-					(int) ( $row_data['avg_inp'] ?? 0 ),
-					(int) ( $row_data['worst_inp'] ?? 0 ),
-					(int) ( $row_data['events'] ?? 0 ),
-					$this->csv_cell( (string) ( $row_data['example_url'] ?? '' ) ),
-					$days,
-					$min_events,
-					$this->csv_cell( $url_like ),
+				$this->csv_cell( (string) ( $row_data['selector'] ?? '' ) ),
+				(int) ( $row_data['p75'] ?? 0 ),
+				(int) ( $row_data['avg_inp'] ?? 0 ),
+				(int) ( $row_data['worst_inp'] ?? 0 ),
+				(int) ( $row_data['events'] ?? 0 ),
+				$this->csv_cell( (string) ( $row_data['example_url'] ?? '' ) ),
+				$days,
+				$min_events,
+				$this->csv_cell( $url_like ),
 				];
 				$row = apply_filters( 'inpd/csv/offenders_row', $row, $row_data );
 				fputcsv( $out, $row );
