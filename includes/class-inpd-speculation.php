@@ -260,7 +260,7 @@ final class INPD_Speculation {
 			// No prerender by default.
 		];
 
-                echo "\n" . '<script type="speculationrules">' . wp_json_encode( $data, JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
+                echo "\n" . '<script type="speculationrules">' . wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG ) . '</script>' . "\n";
         }
 
         /**
