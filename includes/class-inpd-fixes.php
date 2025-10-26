@@ -212,9 +212,15 @@ final class INPD_Fixes {
 		}
 
 		// Insert defer before closing of opening tag.
-		$tag = preg_replace( '/^<script\b(?![^>]*\bdefer\b)/i', '<script defer', $tag, 1 );
-		return $tag ?: $tag;
-	}
+                $original_tag = $tag;
+                $new_tag      = preg_replace( '/^<script\b(?![^>]*\bdefer\b)/i', '<script defer', $tag, 1 );
+
+                if ( is_string( $new_tag ) && '' !== $new_tag ) {
+                        return $new_tag;
+                }
+
+                return $original_tag;
+        }
 
 	/**
 	 * Emit a single inline JS payload implementing the fixes that are enabled.
