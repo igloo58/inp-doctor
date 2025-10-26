@@ -24,10 +24,10 @@ final class INPD_REST {
 		add_action( 'rest_api_init', [ $this, 'register_routes' ] );
 	}
 
-	public function register_routes(): void {
-		register_rest_route(
-			self::NAMESPACE,
-			'/event',
+        public function register_routes(): void {
+                register_rest_route(
+                        self::NAMESPACE,
+                        '/event',
 			[
 				'methods'             => \WP_REST_Server::CREATABLE,
 				'callback'            => [ $this, 'handle_event' ],
@@ -57,16 +57,25 @@ final class INPD_REST {
 			return new \WP_REST_Response( [ 'error' => 'payload_too_large' ], 413 );
 		}
 
-		$home   = rtrim( (string) home_url( '/' ), '/' );
-		$hp     = wp_parse_url( $home );
-		$origin = ( $hp['scheme'] ?? 'http' ) . '://' . ( $hp['host'] ?? '' ) . ( isset( $hp['port'] ) ? ':' . $hp['port'] : '' );
+                $home   = rtrim( (string) home_url( '/' ), '/' );
+                $hp     = wp_parse_url( $home );
+                $origin = ( $hp['scheme'] ?? 'http' ) . '://' . ( $hp['host'] ?? '' ) . ( isset( $hp['port'] ) ? ':' . $hp['port'] : '' );
+                $home_h = isset( $hp['host'] ) ? strtolower( (string) $hp['host'] ) : '';
+                $home_s = isset( $hp['scheme'] ) ? strtolower( (string) $hp['scheme'] ) : 'http';
+                $home_p = isset( $hp['port'] ) ? (int) $hp['port'] : self::default_port_for_scheme( $home_s );
 
-		$hdr_origin  = (string) $request->get_header( 'origin' );
-		$hdr_referer = (string) $request->get_header( 'referer' );
+                $hdr_origin  = (string) $request->get_header( 'origin' );
+                $hdr_referer = (string) $request->get_header( 'referer' );
 
-		$allowed = (array) apply_filters( 'inpd/rest/allowed_origins', [ $origin ] );
-		$same    = ( 0 === strpos( $hdr_origin, $origin ) ) || ( 0 === strpos( $hdr_referer, $origin ) );
-		$ok      = $same || ( $hdr_origin && in_array( $hdr_origin, $allowed, true ) );
+                $allowed = (array) apply_filters( 'inpd/rest/allowed_origins', [ $origin ] );
+                $origin_host_port  = self::parse_host_port( $hdr_origin, $home_s );
+                $referer_host_port = self::parse_host_port( $hdr_referer, $home_s );
+                $same              = (
+                        $origin_host_port[0] === $home_h && $origin_host_port[1] === $home_p
+                ) || (
+                        $referer_host_port[0] === $home_h && $referer_host_port[1] === $home_p
+                );
+                $ok      = $same || ( $hdr_origin && in_array( $hdr_origin, $allowed, true ) );
 
 		if ( ! $ok ) {
 			return new \WP_REST_Response( [ 'error' => 'forbidden_origin' ], 403 );
@@ -154,9 +163,9 @@ final class INPD_REST {
 			if ( '' === $page || '/' !== $page[0] ) {
 				continue;
 			}
-			if ( strlen( $page ) > $max_path ) {
-				$page = substr( $page, 0, $max_path );
-			}
+                        if ( strlen( $page ) > $max_path ) {
+                                $page = substr( $page, 0, $max_path );
+                        }
 
 			$clean[] = [
 				'ts'               => gmdate( 'Y-m-d H:i:s', $timestamp ),
@@ -208,8 +217,37 @@ final class INPD_REST {
 			}
 		}
 
-		set_transient( $key, $used + $inserted, 60 );
+                set_transient( $key, $used + $inserted, 60 );
 
-		return new \WP_REST_Response( [ 'ok' => true, 'accepted' => $inserted ], 200 );
-	}
+                return new \WP_REST_Response( [ 'ok' => true, 'accepted' => $inserted ], 200 );
+        }
+
+        private static function parse_host_port( string $value, string $default_scheme ): array {
+                if ( '' === $value ) {
+                        return [ '', null ];
+                }
+
+                $parsed = wp_parse_url( $value );
+                if ( ! is_array( $parsed ) || empty( $parsed['host'] ) ) {
+                        return [ '', null ];
+                }
+
+                $host   = strtolower( (string) $parsed['host'] );
+                $scheme = strtolower( (string) ( $parsed['scheme'] ?? $default_scheme ) );
+                $port   = isset( $parsed['port'] ) ? (int) $parsed['port'] : self::default_port_for_scheme( $scheme );
+
+                return [ $host, $port ];
+        }
+
+        private static function default_port_for_scheme( string $scheme ): int {
+                if ( 'https' === $scheme ) {
+                        return 443;
+                }
+
+                if ( 'http' === $scheme ) {
+                        return 80;
+                }
+
+                return 0;
+        }
 }
