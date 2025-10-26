@@ -192,25 +192,35 @@ final class INPD_REST {
 		global $wpdb;
 		$table    = INPD_Plugin::table();
 		$inserted = 0;
-		$formats  = [ '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%d' ];
 
 		foreach ( $clean as $row ) {
-			$ok = $wpdb->insert(
-				$table,
-				[
-					'ts'               => $row['ts'],
-					'page_url'         => $row['page_url'],
-					'interaction_type' => $row['interaction_type'],
-					'target_selector'  => $row['target_selector'],
-					'inp_ms'           => $row['inp_ms'],
-					'long_task_ms'     => $row['long_task_ms'],
-					'script_url'       => $row['script_url'],
-					'ua_family_hash'   => null,
-					'device_type'      => $row['device_type'],
-					'sample_rate'      => $row['sample_rate'],
-				],
-				$formats
-			);
+			$data = [
+				'ts'               => $row['ts'],
+				'page_url'         => $row['page_url'],
+				'interaction_type' => $row['interaction_type'],
+				'target_selector'  => $row['target_selector'],
+				'inp_ms'           => $row['inp_ms'],
+				'long_task_ms'     => $row['long_task_ms'],
+				'script_url'       => $row['script_url'],
+				'ua_family_hash'   => $row['ua_family_hash'] ?? null,
+				'device_type'      => $row['device_type'],
+				'sample_rate'      => $row['sample_rate'],
+			];
+
+			if ( null === $data['long_task_ms'] ) {
+				unset( $data['long_task_ms'] );
+			}
+
+			if ( null === $data['ua_family_hash'] ) {
+				unset( $data['ua_family_hash'] );
+			}
+
+			$formats = [];
+			foreach ( array_keys( $data ) as $column ) {
+				$formats[] = in_array( $column, [ 'inp_ms', 'long_task_ms', 'sample_rate' ], true ) ? '%d' : '%s';
+			}
+
+			$ok = $wpdb->insert( $table, $data, $formats );
 
 			if ( $ok ) {
 				$inserted++;
