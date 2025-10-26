@@ -86,12 +86,13 @@ final class INPD_REST {
 			return new \WP_REST_Response( [ 'error' => 'invalid_json' ], 400 );
 		}
 
-		$token  = isset( $data['token'] ) ? (string) $data['token'] : '';
+                $token           = isset( $data['token'] ) ? (string) $data['token'] : '';
+                $expected_token = INPD_Plugin::public_token();
 		$events = ( isset( $data['events'] ) && is_array( $data['events'] ) ) ? $data['events'] : [];
 
-		if ( $token !== INPD_Plugin::public_token() ) {
-			return new \WP_REST_Response( [ 'error' => 'bad_token' ], 403 );
-		}
+                if ( '' === $token || ! hash_equals( $expected_token, $token ) ) {
+                        return new \WP_REST_Response( [ 'error' => 'bad_token' ], 403 );
+                }
 
 		$max_batch = (int) apply_filters( 'inpd/rest/max_batch', 100 );
 		if ( empty( $events ) || count( $events ) > $max_batch ) {
