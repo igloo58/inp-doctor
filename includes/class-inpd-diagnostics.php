@@ -59,9 +59,9 @@ final class INPD_Diagnostics {
 		$deferred = (bool) preg_match( '/\sdefer(\s|>)/i', $tag );
 		$reason   = $deferred ? 'deferred' : 'skipped';
 
-		if ( ! $deferred ) {
-			// Mirror reasons from our preset logic.
-			if ( preg_match( '/\s(async|defer|type=["\']module["\'])/i', $tag ) ) {
+                if ( ! $deferred ) {
+                        // Mirror reasons from our preset logic.
+                        if ( preg_match( '/\s(async|defer|type\s*=\s*["\']module["\'])/i', $tag ) ) {
 				$reason = 'has-async-defer-or-module';
 			} elseif ( 'admin-bar' === $handle ) {
 				$reason = 'admin-bar';
