@@ -77,7 +77,11 @@ final class INPD_Admin {
 		$page          = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$url_like      = isset( $_GET['url'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['url'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$sel_param     = isset( $_GET['sel'] ) ? (string) wp_unslash( $_GET['sel'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$prefer_rollup = isset( $_GET['rollups'] ) ? (bool) $_GET['rollups'] : (bool) get_option( 'inpd_prefer_rollups', true ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( array_key_exists( 'rollups', $_GET ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$prefer_rollup = in_array( (string) $_GET['rollups'], [ '1', 'true', 'yes' ], true );
+		} else {
+			$prefer_rollup = (bool) get_option( 'inpd_prefer_rollups', true );
+		}
 
 		echo '<div class="wrap">';
 		echo '<h1>INP Doctor</h1>';
@@ -155,10 +159,8 @@ final class INPD_Admin {
 		// Filters.
 		$base = admin_url( 'admin.php?page=inpd' );
 		echo '<form method="get" action="' . esc_url( $base ) . '" style="margin:12px 0">';
-		echo '<input type="hidden" name="page" value="inpd" />';
-		if ( $prefer_rollup ) {
-			echo '<input type="hidden" name="rollups" value="1" />';
-		}
+               echo '<input type="hidden" name="page" value="inpd" />';
+               echo '<input type="hidden" name="rollups" value="' . ( $prefer_rollup ? '1' : '0' ) . '" />';
 		echo 'Lookback: ';
 		echo '<select name="days">';
 		foreach ( [ 1, 3, 7, 14, 28 ] as $d ) {
@@ -171,12 +173,12 @@ final class INPD_Admin {
 		echo 'URL contains: ';
 		echo '<input type="text" name="url" value="' . esc_attr( $url_like ) . '" style="width:200px" /> &nbsp; ';
 		submit_button( 'Apply', 'secondary', '', false );
-		echo '<label style="margin-left:8px;"><input type="checkbox" name="prefer_rollups" value="1"' . checked( $prefer_rollup, true, false ) . ' onchange="location.href=this.checked?addQueryArg(location.href,\'rollups\',1):removeQueryArg(location.href,\'rollups\');"> ';
+               echo '<label style="margin-left:8px;"><input type="checkbox" name="prefer_rollups" value="1"' . checked( $prefer_rollup, true, false ) . ' onchange="location.href=addQueryArg(location.href,\'rollups\',this.checked?1:0);"> ';
 		esc_html_e( 'Prefer rollups (faster)', 'inp-doctor' );
 		echo '</label>';
 		static $rollup_query_helpers_printed = false;
 		if ( ! $rollup_query_helpers_printed ) {
-			echo '<script>window.addQueryArg=window.addQueryArg||function(u,k,v){var url=new URL(u);url.searchParams.set(k,v);return url.toString();};window.removeQueryArg=window.removeQueryArg||function(u,k){var url=new URL(u);url.searchParams.delete(k);return url.toString();};</script>';
+                       echo '<script>window.addQueryArg=window.addQueryArg||function(u,k,v){var url=new URL(u);if(null===v||undefined===v){url.searchParams.delete(k);}else{url.searchParams.set(k,v);}return url.toString();};</script>';
 			$rollup_query_helpers_printed = true;
 		}
 		$selector = '' !== $sel_param ? $sel_param : '';
@@ -280,7 +282,11 @@ final class INPD_Admin {
 		$min_events    = isset( $_GET['min'] ) ? max( 1, (int) $_GET['min'] ) : 5;
 		$url_like      = isset( $_GET['url'] ) ? sanitize_text_field( (string) wp_unslash( $_GET['url'] ) ) : '';
 		$selector      = isset( $_GET['selector'] ) ? substr( sanitize_text_field( (string) wp_unslash( $_GET['selector'] ) ), 0, 255 ) : '';
-		$prefer_rollup = isset( $_GET['rollups'] ) ? (bool) $_GET['rollups'] : (bool) get_option( 'inpd_prefer_rollups', true );
+		if ( array_key_exists( 'rollups', $_GET ) ) {
+			$prefer_rollup = in_array( (string) $_GET['rollups'], [ '1', 'true', 'yes' ], true );
+		} else {
+			$prefer_rollup = (bool) get_option( 'inpd_prefer_rollups', true );
+		}
 
 		// Chunked streaming to avoid memory issues on busy sites.
 		$chunk = 500;
